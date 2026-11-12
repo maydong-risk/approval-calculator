@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>新能源重卡融资审批测算 demo｜电动重卡风控手记</title>
+<style>
+  :root {
+    --green: #16a34a;
+    --green-dark: #15803d;
+    --teal: #0d9488;
+    --blue: #2563eb;
+    --amber: #d97706;
+    --red: #dc2626;
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --grad: linear-gradient(135deg, #16a34a, #0d9488);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+    padding: 20px; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  .hero { text-align: center; padding: 16px 16px 14px; }
+  .hero .brand { font-size: 12px; color: var(--muted); letter-spacing: 1px; margin-bottom: 4px; }
+  .hero h1 { font-size: 24px; font-weight: 700; }
+  .hero h1 .accent { color: var(--green); }
+  .hero p { color: var(--muted); margin-top: 4px; font-size: 13px; }
+
+  /* Tab 切换 */
+  .tabs { display: flex; gap: 8px; justify-content: center; margin: 14px 0 18px; }
+  .tabs button {
+    padding: 9px 26px; border: 1px solid var(--line); background: #fff; color: var(--muted);
+    border-radius: 999px; font-size: 14px; cursor: pointer; font-weight: 500; transition: all .15s;
+  }
+  .tabs button.active { background: var(--grad); color: #fff; border-color: transparent; font-weight: 700; box-shadow: 0 4px 12px rgba(22,163,74,0.22); }
+
+  .notice {
+    background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px;
+    padding: 11px 16px; font-size: 12.5px; color: #92400e; margin-bottom: 16px; line-height: 1.7;
+  }
+
+  .card {
+    background: var(--card); border-radius: 14px; padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 16px;
+  }
+  .card h2 { font-size: 15px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .card h2 .step { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--green); color: #fff; font-size: 13px; flex-shrink: 0; }
+  .card h3 { font-size: 13.5px; font-weight: 700; color: var(--text); margin: 14px 0 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+
+  .field { margin-bottom: 12px; }
+  .field label { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+  .field label .hint { font-size: 11px; color: #9ca3af; font-weight: 400; }
+  .field input[type="number"], .field select {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px;
+    font-size: 14px; color: var(--text); background: #fff; outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  .field input[type="number"]:focus, .field select:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(22,163,74,0.12); }
+  .field input[readonly] { background: #f0fdf4; font-weight: 700; color: var(--green-dark); }
+  .field input.invalid, .cfg-input.invalid { border-color: var(--red) !important; box-shadow: 0 0 0 3px rgba(220,38,38,0.14) !important; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* 融资结果小结 */
+  .fin-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin: 12px 0 8px; padding: 11px 14px; background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; }
+  .fin-summary .fin-item { min-width: 0; }
+  .fin-summary .fin-item .k { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .fin-summary .fin-item .v { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.25; }
+  .fin-summary .fin-item .v.unit { font-size: 11px; font-weight: 400; color: #9ca3af; margin-left: 2px; }
+
+  /* 决策页布局 */
+  .grid { display: grid; grid-template-columns: 360px 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  /* 结果区 */
+  .result-hero { background: var(--grad); color: #fff; border-radius: 16px; padding: 22px; margin-bottom: 16px; box-shadow: 0 8px 24px rgba(22,163,74,0.20); }
+  .result-hero .hero-row { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr; gap: 14px; }
+  @media (max-width: 560px) { .result-hero .hero-row { grid-template-columns: 1fr 1fr; } }
+  .result-hero .big-label { font-size: 12px; opacity: 0.92; }
+  .result-hero .big-num { font-size: 26px; font-weight: 800; line-height: 1.15; margin: 3px 0 2px; letter-spacing: -0.5px; }
+  .result-hero .big-num.small { font-size: 20px; }
+  .result-hero .big-sub { font-size: 11.5px; opacity: 0.9; }
+
+  /* 表格 */
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 4px; }
+  th { background: #f9fafb; padding: 7px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--line); color: var(--muted); }
+  td { padding: 6px 10px; border-bottom: 1px solid #f0f0f0; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.sub td { font-weight: 700; border-top: 2px solid #cbd5e1; background: #fafafa; }
+  tr.total td { font-weight: 700; background: #ecfdf5; }
+
+  .badge { display: inline-block; padding: 1px 10px; border-radius: 10px; font-size: 12px; font-weight: 700; }
+  .badge-green { background: #f0fdf4; color: #166534; }
+  .badge-yellow { background: #fffbeb; color: #92400e; }
+  .badge-orange { background: #fff7ed; color: #9a3412; }
+  .badge-red { background: #fef2f2; color: #991b1b; }
+
+  .verdict { padding: 12px 16px; border-radius: 10px; margin-top: 12px; font-size: 13px; font-weight: 600; line-height: 1.6; }
+  .verdict-pass { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+  .verdict-cond { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .verdict-fail { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+
+  .note { font-size: 11px; color: #9ca3af; margin-top: 4px; line-height: 1.6; }
+  .info { font-size: 11px; color: var(--blue); margin-top: 4px; line-height: 1.6; }
+  .warn { font-size: 11px; color: var(--red); margin-top: 4px; line-height: 1.6; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .chart-box canvas { width: 100%; height: auto; display: block; border-radius: 10px; }
+
+  /* 配置页表格 */
+  .cfg-table { font-size: 12px; }
+  .cfg-table th, .cfg-table td { padding: 6px 8px; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 5px; font-weight: 600; }
+  .tag-green { background: #ecfdf5; color: #065f46; }
+  .tag-amber { background: #fffbeb; color: #92400e; }
+  .tag-a { background: #ecfdf5; color: #065f46; }
+  .tag-b { background: #eef2ff; color: #3730a3; }
+  .tag-c { background: #fef3c7; color: #92400e; }
+  .cfg-input { width: 70px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; font-size: 12.5px; text-align: center; }
+  .cfg-input:focus { border-color: var(--green); outline: none; }
+
+  .foot { text-align: center; color: #9ca3af; font-size: 12px; padding: 12px; }
+  .hidden { display: none !important; }
+  .collapse-head {
+    cursor: pointer; user-select: none;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; margin-top: 8px;
+    border: 1px solid var(--green); border-radius: 8px;
+    background: #f0fdf4; color: var(--green-dark);
+    font-size: 13px; font-weight: 600;
+    transition: background .15s;
+  }
+  .collapse-head:hover { background: #dcfce7; }
+  .collapse-arrow { transition: transform .15s; display: inline-block; }
+  .collapse-arrow.open { transform: rotate(90deg); }
+  .reset-btn { font-size: 11px; color: var(--muted); cursor: pointer; text-decoration: underline; font-weight: 400; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="brand">电动重卡风控手记 · 风控测算示意 demo</div>
+    <h1>新能源重卡融资<span class="accent">审批测算演示</span></h1>
+    <p>把系列文章里的原理做成一个能点的演示：车型配置 → TCO(3年持有) → DSCR(按实际期限) → 残值敞口 → 审批判定。</p>
+  </div>
+
+  <div class="tabs">
+    <button type="button" id="tabCfgBtn" class="active" onclick="switchTab('cfg')">① 配置页</button>
+    <button type="button" id="tabMainBtn" onclick="switchTab('main')">② 决策页</button>
+  </div>
+
+  <div class="notice">
+    这是<strong>金融机构风控视角</strong>下的一个审批测算 demo（最小示意版），目的不是报价或放款，而是把「电动重卡风控手记」系列文章里的几个原理——TCO 按融资持有口径算 3 年、DSCR 按实际贷款期限看最大风险、残值敞口靠首付＋保证金兜底——做成一个能点的演示，帮同行更直观地理解这些方法论具体怎么落地。
+
+    先讲清三点，避免误读：<br>
+    ① 这是<strong>风控口径</strong>的测算，不是卖车口径。TCO 按「融资期限内的持有成本」算、上限 3 年（跟着产品期限走）；卖车常用的「8 年全生命周期」是营销口径，两者目的不同，不在本框架内。<br>
+    ② 页面里的车型价、电量、残值率、电价、融资基准，<strong>全是示意估算值</strong>，不是真实产品报价，本工具也没有留任何实际报价或放款入口。<br>
+    ③ 这是大致示意、并不完善的 demo，只覆盖了方法论的主干变量，没有穷尽所有场景和变量。
+
+    有兴趣就调调参数算一算，帮着理解思路即可；具体数值请勿对号入座，不构成任何融资、授信或购车建议。
+  </div>
+
+  <!-- ============ 配置页 ============ -->
+  <div id="tabCfg">
+    <div class="card">
+      <h2><span class="step">1</span>车型矩阵（7 品牌 × 2 款，49 吨 6×4 纯电牵引）</h2>
+      <div class="note" style="margin-bottom:10px">残值档按新能源销量分档：A 档 = 头部 3 万级（徐工/三一/解放）；B 档 = 中坚 2.5 万级（重汽/陕汽）；C 档 = 追赶 1 万级（东风/远程）。销量数据：第一商用车网 2025 全年交强险实销。</div>
+      <table class="cfg-table">
+        <thead><tr><th>品牌</th><th>车型</th><th>公告型号</th><th>电量 kWh</th><th>电池</th><th>整备 t</th><th class="n">参考价</th><th>口径</th><th>残值档</th></tr></thead>
+        <tbody id="matrixBody"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">2</span>残值档参数（可调，机构风险偏好定）</h2>
+      <div class="note" style="margin-bottom:10px">实际处置价率 = 账面残值率 × flow 折价。3 年锚点落在文章公开区间「账面 40-50% / flow 0.5-0.75」内。期末残值用于 TCO 与交叉点图。</div>
+      <table class="cfg-table">
+        <thead><tr><th>残值档</th><th>品牌</th><th>3年账面残值率 %</th><th>flow 折价</th><th>3年实际处置价率</th></tr></thead>
+        <tbody id="gradeBody"></tbody>
+      </table>
+      <div class="note" style="margin-top:8px">上牌后价值（残值起点，期初落地折旧）：<input type="number" class="cfg-input" id="cfgRegRate" value="70" step="1" style="width:60px"> %</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">3</span>电价三档（实付价，含服务费；自有桩为无服务费基础价）</h2>
+      <div class="note" style="margin-bottom:10px">示意默认值，各地区/站点差异大，可按当地情况自行调整。</div>
+      <table class="cfg-table">
+        <thead><tr><th>渠道</th><th>谷电 元/度</th><th>平价 元/度</th><th>峰电 元/度</th><th>说明</th></tr></thead>
+        <tbody id="priceBody"></tbody>
+      </table>
+      <div class="note" style="margin-top:8px">柴油价基准（可调，宏观推断）：<input type="number" class="cfg-input" id="cfgDiesel" value="7.5" step="0.1" style="width:60px"> 元/L</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">4</span>融资基准（可调默认值）</h2>
+      <div class="field-row" style="max-width:520px">
+        <div class="field"><label>默认年化利率 %<span class="hint">真实融租 8-10</span></label><input type="number" class="cfg-input" id="cfgRate" value="8" step="0.1" style="width:100%"></div>
+        <div class="field"><label>默认保证金 %<span class="hint">按融资额收</span></label><input type="number" class="cfg-input" id="cfgMargin" value="5" step="1" style="width:100%"></div>
+        <div class="field"><label>默认首付 %</label><input type="number" class="cfg-input" id="cfgDown" value="10" step="5" style="width:100%"></div>
+        <div class="field"><label>购置税 %<span class="hint">新能源减半</span></label><input type="number" class="cfg-input" id="cfgTax" value="4.4" step="0.1" style="width:100%"></div>
+      </div>
+      <div class="note">燃油车对标基准：同规格 49 吨 6×4 牵引车，默认价 38 万、油耗 35L/百公里。亏吨自重差按所选车型电量自动带出（决策页可调）。</div>
+      <div style="margin-top:10px"><span class="reset-btn" onclick="resetConfig()">恢复全部默认值</span></div>
+    </div>
+  </div>
+
+  <!-- ============ 决策页 ============ -->
+  <div id="tabMain" class="hidden">
+    <div class="grid">
+      <!-- 左：输入 -->
+      <div>
+        <div class="card">
+          <h2><span class="step">1</span>车辆</h2>
+          <div class="field"><label>品牌</label><select id="brandSel"></select></div>
+          <div class="field"><label>车型<span class="hint" id="modelHint"></span></label><select id="modelSel"></select></div>
+          <div class="field-row">
+            <div class="field"><label>电动价（万元）</label><input type="number" id="evPrice" value="60" step="1"></div>
+            <div class="field"><label>燃油价（万元）</label><input type="number" id="fuelPrice" value="38" step="1"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>电耗（度/百公里）</label><input type="number" id="evKwh" value="120" step="1"></div>
+            <div class="field"><label>油耗（L/百公里）</label><input type="number" id="dieselL" value="35" step="1"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><span class="step">2</span>融资方案<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:4px">（融资租赁 · 含购置税）</span></h2>
+          <div class="field-row">
+            <div class="field"><label>首付比例 %</label><input type="number" id="down" value="10" step="1"></div>
+            <div class="field"><label>保证金 %<span class="hint">按融资额收·不冲本金</span></label><input type="number" id="marginRate" value="5" step="1"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>年化利率 %</label><input type="number" id="rate" value="8" step="0.1"></div>
+            <div class="field"><label>期限（月）<span class="hint">上限36</span></label>
+              <select id="months">
+                <option value="12">12 个月</option>
+                <option value="18">18 个月</option>
+                <option value="24">24 个月</option>
+                <option value="36" selected>36 个月</option>
+              </select>
+            </div>
+          </div>
+          <div class="fin-summary" id="finSummary">
+            <div class="fin-item"><div class="k">首付金额</div><div class="v" id="finDown">—</div></div>
+            <div class="fin-item"><div class="k">融资额（本金）</div><div class="v" id="finPrincipal">—</div></div>
+            <div class="fin-item"><div class="k">保证金<span style="color:#9ca3af;font-weight:400">（期末退·影响IRR）</span></div><div class="v" id="finMargin">—</div></div>
+            <div class="fin-item"><div class="k">月供</div><div class="v" id="finMonthly">—</div></div>
+            <div class="fin-item"><div class="k">总利息</div><div class="v" id="finInterest">—</div></div>
+            <div class="fin-item"><div class="k">实际年化 IRR</div><div class="v" id="finIrr">—</div></div>
+          </div>
+          <div class="note">产品期限上限 3 年（36 期）。TCO 按 3 年持有口径算——跟着融资期限走，不是卖车常用的全生命周期口径。</div>
+        </div>
+
+        <div class="card">
+          <h2><span class="step">3</span>收入</h2>
+          <div class="field"><label>运输场景<span class="hint">决定收入 → 带出里程/空驶/运价</span></label>
+            <select id="scene">
+              <option value="steel">钢厂倒短</option>
+              <option value="mine">矿区渣土</option>
+              <option value="city">城际配送</option>
+              <option value="trunk">干线甩挂</option>
+            </select>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>月里程（km）</label><input type="number" id="km" value="8000" step="100"></div>
+            <div class="field"><label>空驶率 %</label><input type="number" id="emptyRate" value="12" step="1"></div>
+          </div>
+          <div class="field"><label>公里运价（元/km）</label><input type="number" id="pricePerKm" value="7" step="0.5"></div>
+          <div class="field"><label>月收入（元）<span class="hint">自动算</span></label><input type="number" id="revenue" readonly></div>
+          <div class="note">月收入 = 公里运价 × 月里程 × (1−空驶率)。收入必须扣空驶，不能拿名义运价直接乘总里程。</div>
+        </div>
+
+        <div class="card">
+          <h2><span class="step">4</span>能源</h2>
+          <div class="field"><label>充电模式<span class="hint">决定电费 → 带出渠道/时段占比</span></label>
+            <select id="chargeMode">
+              <option value="closed">场站/自有桩为主</option>
+              <option value="city">公共桩为主</option>
+              <option value="trunk">高速快充为主</option>
+              <option value="custom">自定义</option>
+            </select>
+          </div>
+          <div class="field"><label>加权平均电价（元/度）<span class="hint">自动算</span></label><input type="number" id="avgPrice" readonly></div>
+          <div class="warn hidden" id="chargeWarn"></div>
+          <div class="field"><label>柴油价（元/L）<span class="hint">可调·宏观推断</span></label><input type="number" id="dieselPrice" value="7.5" step="0.1"></div>
+
+          <div class="collapse-head" onclick="toggleCollapse()">
+            <span class="collapse-arrow" id="collapseArrow">▶</span> 充电结构详情 · 渠道占比 × 时段占比 × 电价（点开可调）
+          </div>
+          <div id="chargeDetail" class="hidden" style="border:1px dashed var(--line);border-radius:8px;padding:12px;margin-top:4px">
+            <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--text)">渠道占比（合计 <span id="channelSum" style="color:var(--green-dark)">100%</span>）</div>
+            <div class="field-row">
+              <div class="field"><label>自有桩 %</label><input type="number" id="selfRatio" value="90" step="5"></div>
+              <div class="field"><label>公共桩 %</label><input type="number" id="publicRatio" value="10" step="5"></div>
+              <div class="field"><label>高速服务区 %</label><input type="number" id="highwayRatio" value="0" step="5"></div>
+            </div>
+            <div style="font-size:12px;font-weight:700;margin:8px 0;color:var(--text)">各渠道内时段占比（每渠道合计 100%）</div>
+            <table class="cfg-table" style="width:100%">
+              <thead><tr><th>渠道</th><th>谷 %</th><th>平 %</th><th>峰 %</th><th class="n">合计</th></tr></thead>
+              <tbody>
+                <tr><td>自有桩</td><td><input type="number" class="cfg-input" id="selfValley" value="80" style="width:100%"></td><td><input type="number" class="cfg-input" id="selfFlat" value="15" style="width:100%"></td><td><input type="number" class="cfg-input" id="selfPeak" value="5" style="width:100%"></td><td class="n" id="selfSum" style="font-weight:700;color:var(--green-dark)">100%</td></tr>
+                <tr><td>公共桩</td><td><input type="number" class="cfg-input" id="publicValley" value="10" style="width:100%"></td><td><input type="number" class="cfg-input" id="publicFlat" value="60" style="width:100%"></td><td><input type="number" class="cfg-input" id="publicPeak" value="30" style="width:100%"></td><td class="n" id="publicSum" style="font-weight:700;color:var(--green-dark)">100%</td></tr>
+                <tr><td>高速服务区</td><td><input type="number" class="cfg-input" id="highwayValley" value="10" style="width:100%"></td><td><input type="number" class="cfg-input" id="highwayFlat" value="50" style="width:100%"></td><td><input type="number" class="cfg-input" id="highwayPeak" value="40" style="width:100%"></td><td class="n" id="highwaySum" style="font-weight:700;color:var(--green-dark)">100%</td></tr>
+              </tbody>
+            </table>
+            <div style="font-size:12px;font-weight:700;margin:8px 0;color:var(--text)">各渠道电价（元/度）</div>
+            <table class="cfg-table" style="width:100%">
+              <thead><tr><th>渠道</th><th>谷</th><th>平</th><th>峰</th></tr></thead>
+              <tbody>
+                <tr><td>自有桩</td><td><input type="number" class="cfg-input" id="selfValleyPrice" value="0.30" step="0.01" style="width:100%"></td><td><input type="number" class="cfg-input" id="selfFlatPrice" value="0.70" step="0.01" style="width:100%"></td><td><input type="number" class="cfg-input" id="selfPeakPrice" value="1.00" step="0.01" style="width:100%"></td></tr>
+                <tr><td>公共桩</td><td><input type="number" class="cfg-input" id="publicValleyPrice" value="0.50" step="0.01" style="width:100%"></td><td><input type="number" class="cfg-input" id="publicFlatPrice" value="0.90" step="0.01" style="width:100%"></td><td><input type="number" class="cfg-input" id="publicPeakPrice" value="1.20" step="0.01" style="width:100%"></td></tr>
+                <tr><td>高速服务区</td><td><input type="number" class="cfg-input" id="highwayValleyPrice" value="1.20" step="0.01" style="width:100%"></td><td><input type="number" class="cfg-input" id="highwayFlatPrice" value="1.60" step="0.01" style="width:100%"></td><td><input type="number" class="cfg-input" id="highwayPeakPrice" value="1.90" step="0.01" style="width:100%"></td></tr>
+              </tbody>
+            </table>
+            <div class="warn">电价示意值，各地区/站点差异大，可按当地情况自行调整。</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><span class="step">5</span>线路 &amp; 成本</h2>
+          <div class="field-row">
+            <div class="field"><label>计费方式<span class="hint">按吨公里才可能亏吨</span></label>
+              <select id="sfMethod"><option value="trip">按趟计费</option><option value="tonkm">按吨公里</option></select>
+            </div>
+            <div class="field"><label>货物类型<span class="hint">重货才可能亏吨</span></label>
+              <select id="cargo"><option value="heavy">重货（煤炭/砂石/钢材）</option><option value="light">轻抛（快递/快运）</option></select>
+            </div>
+          </div>
+          <div style="font-size:12px;font-weight:700;margin:8px 0 8px;color:var(--text)">亏吨参数（仅「重货 + 按吨公里」时计入）</div>
+          <div class="field-row" style="grid-template-columns:1fr 1fr 1fr">
+            <div class="field"><label>自重差（吨）<span class="hint">随电量带出</span></label><input type="number" id="selfDiff" value="2.5" step="0.1"></div>
+            <div class="field"><label>吨公里运价（元/吨·公里）</label><input type="number" id="tonKmRate" value="0.4" step="0.05"></div>
+            <div class="field"><label>实载率 %</label><input type="number" id="loadRate" value="61" step="1"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>司机工资（元/月）</label><input type="number" id="driver" value="0" step="1000"></div>
+            <div class="field"><label>月路桥费（元）</label><input type="number" id="toll" value="0" step="500"></div>
+          </div>
+          <div class="field"><label>保险年费（万元/年）</label><input type="number" id="insurance" value="4.0" step="0.1"></div>
+        </div>
+      </div>
+
+      <!-- 右：输出 -->
+      <div>
+        <div class="result-hero">
+          <div class="hero-row">
+            <div><div class="big-label">DSCR</div><div class="big-num" id="mDscr">—</div><div class="big-sub" id="mDscrSub">经营净收入 ÷ 月供</div></div>
+            <div><div class="big-label">3年省（vs 燃油）</div><div class="big-num" id="mSave">—</div><div class="big-sub" id="mSaveSub">TCO 差值</div></div>
+            <div><div class="big-label">省的幅度</div><div class="big-num" id="mSavePct">—</div><div class="big-sub">达标线 ≥ 20%</div></div>
+            <div><div class="big-label">风险交叉点</div><div class="big-num small" id="mCross">—</div><div class="big-sub" id="mCrossSub">—</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><span class="step">A</span>月度现金流 &amp; DSCR</h2>
+          <div id="tableA"></div>
+        </div>
+
+        <div class="card">
+          <h2><span class="step">B</span>3 年 TCO 对比（持有口径，与期限解耦）</h2>
+          <div id="tableB"></div>
+        </div>
+
+        <div class="card">
+          <h2><span class="step">C</span>残值敞口（简版交叉图）</h2>
+          <div class="legend">
+            <span><span class="dot" style="background:#dc2626;"></span>剩余本金</span>
+            <span><span class="dot" style="background:#0d9488;"></span>车辆残值（线性）</span>
+            <span><span class="dot" style="background:rgba(220,38,38,0.14);border:1px solid #dc2626;"></span>风险敞口期</span>
+          </div>
+          <div class="chart-box"><canvas id="chart" width="760" height="400" role="img" aria-label="剩余本金与残值交叉图"></canvas></div>
+          <div class="note">残值曲线：上牌后价值（<span id="cRegNote">70%</span>）线性折旧至 3 年实际处置价率（<span id="cEndNote">—</span>）。图只画到贷款期限为止。</div>
+        </div>
+
+        <div class="card">
+          <h2><span class="step">D</span>审批判定</h2>
+          <div id="verdict"></div>
+          <div class="note" style="margin-top:8px">二维判定：① DSCR ≥ 1.30（经营净收入 ÷ 月供）② 省的幅度 ≥ 20%（3 年 TCO 差值 ÷ 燃油 TCO，20% 缓冲垫）。两项共同决定是否通过。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">电动重卡风控手记 · 风控测算示意 demo · 仅为方法论演示，不构成任何建议</div>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  function num(v, def) { var n = parseFloat(v); return isNaN(n) ? def : n; }
+  function fmt(v, d) { d = d == null ? 1 : d; return v.toLocaleString('zh-CN', { maximumFractionDigits: d, minimumFractionDigits: d }); }
+  function fmtMoney(v) { return (Math.round(v * 100) / 100).toLocaleString('zh-CN', { maximumFractionDigits: 2 }); }
+
+  // ============ 静态数据（车型矩阵，查证 2026-11-12） ============
+  var BRANDS = [
+    { name: '徐工', grade: 'A', models: [
+      { name: '漢風XG2 标载', code: 'XGA4256BEVWC1', kwh: 422.87, battery: '宁德时代', weight: '10.5~10.9', price: 49, checked: true },
+      { name: '漢風XG2 大电量', code: 'XGA4252BEVWCS', kwh: 600.96, battery: '宁德时代', weight: '10.5~10.9', price: 60, checked: true },
+    ]},
+    { name: '三一', grade: 'A', models: [
+      { name: '江山平顶 标载', code: 'HQC42503SWBEV17', kwh: 423, battery: '宁德时代', weight: '10.7', price: 46, checked: true },
+      { name: '江山平顶 大电量', code: 'HQC42503SWBEV18', kwh: 600, battery: '三一', weight: '12', price: 60, checked: true },
+    ]},
+    { name: '解放', grade: 'A', models: [
+      { name: 'J6P 标载', code: 'CA4256P26T1BEVA80', kwh: 528.13, battery: '宁德时代', weight: '11.21', price: 55, checked: false },
+      { name: 'J6P 充换一体', code: 'CA4256P26T1BEVA80', kwh: 281.92, battery: '宁德时代', weight: '10.75', price: 42, checked: false },
+    ]},
+    { name: '重汽', grade: 'B', models: [
+      { name: '豪沃TX 标载', code: 'ZZ4257Y384GZ1BEV4A', kwh: 422, battery: '宁德时代', weight: '~11', price: 66, checked: false },
+      { name: '豪沃TX 短倒', code: 'ZZ4257Y344GZ1BEV28', kwh: 282, battery: '宁德时代', weight: '~10.5', price: 62, checked: false },
+    ]},
+    { name: '陕汽', grade: 'B', models: [
+      { name: '德龙X5000E 标载', code: 'SX4257XF4F1BEV', kwh: 400.61, battery: '宁德时代', weight: '11.85', price: 53.78, checked: true },
+      { name: '德龙X5000E 大电量', code: 'SX4257XF4F2BEV', kwh: 600.96, battery: '宁德时代', weight: '~12', price: 58, checked: false },
+    ]},
+    { name: '东风', grade: 'C', models: [
+      { name: '天龙KL 标载', code: 'LZ4250H5DZBEV3', kwh: 400.61, battery: '宁德时代', weight: '10.0', price: 48, checked: false },
+      { name: '天龙KL 长续航', code: 'LZ4250H5DZBEV3', kwh: 600, battery: '宁德时代', weight: '11.3', price: 55, checked: false },
+    ]},
+    { name: '远程', grade: 'C', models: [
+      { name: 'X7E 标载', code: 'HN4253H45C8BEVY', kwh: 422.87, battery: '宁德时代', weight: '10.5', price: 71.8, checked: true },
+      { name: 'X7E 大电量', code: 'HN4252H44C8BEVY', kwh: 440, battery: '玄武(自研)', weight: '~11', price: 45, checked: true },
+    ]},
+  ];
+
+  // 残值档默认（账面残值率 % / flow），可调
+  var GRADES_DEFAULT = {
+    A: { bookRate3: 50, flow: 0.75, brands: '徐工、三一、解放' },
+    B: { bookRate3: 35, flow: 0.65, brands: '重汽、陕汽' },
+    C: { bookRate3: 25, flow: 0.50, brands: '东风、远程' },
+  };
+
+  // 电价默认（元/度）
+  var PRICE_DEFAULT = {
+    self:    { name: '自有桩（无服务费）', valley: 0.30, flat: 0.70, peak: 1.00 },
+    public:  { name: '公共桩（含合作，含服务费）', valley: 0.50, flat: 0.90, peak: 1.20 },
+    highway: { name: '高速服务区（含服务费）', valley: 1.20, flat: 1.60, peak: 1.90 },
+  };
+
+  // 充电模板
+  var CHARGE_TEMPLATES = {
+    closed: { channel: { self: 90, public: 10, highway: 0 }, self: { valley: 80, flat: 15, peak: 5 }, public: { valley: 10, flat: 60, peak: 30 }, highway: { valley: 10, flat: 50, peak: 40 } },
+    city:   { channel: { self: 50, public: 45, highway: 5 }, self: { valley: 70, flat: 25, peak: 5 }, public: { valley: 10, flat: 55, peak: 35 }, highway: { valley: 10, flat: 50, peak: 40 } },
+    trunk:  { channel: { self: 10, public: 50, highway: 40 }, self: { valley: 75, flat: 20, peak: 5 }, public: { valley: 10, flat: 50, peak: 40 }, highway: { valley: 15, flat: 50, peak: 35 } },
+  };
+
+  // 运输场景预设（F11）
+  var SCENES = {
+    steel: { km: 8000, empty: 12, pricePerKm: 7 },
+    mine:  { km: 10000, empty: 8, pricePerKm: 6 },
+    city:  { km: 12000, empty: 28, pricePerKm: 6 },
+    trunk: { km: 18000, empty: 18, pricePerKm: 5 },
+  };
+
+  var FIN_DEFAULT = { rate: 8, margin: 5, down: 10, tax: 4.4, regRate: 70, diesel: 7.5 };
+
+  // ============ localStorage 配置 ============
+  var LS_KEY = 'tco_pro_cfg_v1';
+  function loadCfg() {
+    var cfg = { grades: {}, price: {}, fin: {} };
+    try { var raw = localStorage.getItem(LS_KEY); if (raw) cfg = JSON.parse(raw); } catch (e) {}
+    // 深合并
+    cfg.grades = cfg.grades || {}; cfg.price = cfg.price || {}; cfg.fin = cfg.fin || {};
+    for (var g in GRADES_DEFAULT) {
+      cfg.grades[g] = cfg.grades[g] || {};
+      cfg.grades[g].bookRate3 = cfg.grades[g].bookRate3 != null ? cfg.grades[g].bookRate3 : GRADES_DEFAULT[g].bookRate3;
+      cfg.grades[g].flow = cfg.grades[g].flow != null ? cfg.grades[g].flow : GRADES_DEFAULT[g].flow;
+    }
+    for (var p in PRICE_DEFAULT) {
+      cfg.price[p] = cfg.price[p] || {};
+      cfg.price[p].valley = cfg.price[p].valley != null ? cfg.price[p].valley : PRICE_DEFAULT[p].valley;
+      cfg.price[p].flat = cfg.price[p].flat != null ? cfg.price[p].flat : PRICE_DEFAULT[p].flat;
+      cfg.price[p].peak = cfg.price[p].peak != null ? cfg.price[p].peak : PRICE_DEFAULT[p].peak;
+    }
+    for (var k in FIN_DEFAULT) { cfg.fin[k] = cfg.fin[k] != null ? cfg.fin[k] : FIN_DEFAULT[k]; }
+    return cfg;
+  }
+  function saveCfg(cfg) { try { localStorage.setItem(LS_KEY, JSON.stringify(cfg)); } catch (e) {} }
+  var CFG = loadCfg();
+
+  // ============ 渲染配置页 ============
+  function renderMatrix() {
+    var html = '';
+    BRANDS.forEach(function (b) {
+      b.models.forEach(function (m) {
+        var gradeTag = '<span class="tag tag-' + b.grade.toLowerCase() + '">' + b.grade + '档</span>';
+        var priceStr = (m.checked ? '' : '~') + m.price + ' 万';
+        var statusTag = m.checked ? '<span class="tag tag-green">已查证</span>' : '<span class="tag tag-amber">估算价</span>';
+        html += '<tr><td>' + b.name + '</td><td>' + m.name + '</td><td style="font-size:11px">' + m.code + '</td><td class="n">' + m.kwh + '</td><td>' + m.battery + '</td><td>' + m.weight + '</td><td class="n">' + priceStr + '</td><td>' + statusTag + '</td><td>' + gradeTag + '</td></tr>';
+      });
+    });
+    $('matrixBody').innerHTML = html;
+  }
+
+  function renderGrades() {
+    var html = '';
+    ['A', 'B', 'C'].forEach(function (g) {
+      var d = GRADES_DEFAULT[g];
+      var endRate = (CFG.grades[g].bookRate3 * CFG.grades[g].flow / 100).toFixed(2);
+      html += '<tr><td><span class="tag tag-' + g.toLowerCase() + '">' + g + '档</span></td><td>' + d.brands + '</td>' +
+        '<td><input type="number" class="cfg-input" data-grade="' + g + '" data-field="bookRate3" value="' + CFG.grades[g].bookRate3 + '" style="width:100%"></td>' +
+        '<td><input type="number" class="cfg-input" data-grade="' + g + '" data-field="flow" value="' + CFG.grades[g].flow + '" step="0.01" style="width:100%"></td>' +
+        '<td class="n" style="font-weight:700">' + endRate + '%</td></tr>';
+    });
+    $('gradeBody').innerHTML = html;
+    $('cfgRegRate').value = CFG.fin.regRate;
+  }
+
+  function renderPrices() {
+    var html = '';
+    for (var p in PRICE_DEFAULT) {
+      var d = PRICE_DEFAULT[p];
+      html += '<tr><td>' + d.name + '</td>' +
+        '<td><input type="number" class="cfg-input" data-price="' + p + '" data-field="valley" value="' + CFG.price[p].valley + '" step="0.01" style="width:100%"></td>' +
+        '<td><input type="number" class="cfg-input" data-price="' + p + '" data-field="flat" value="' + CFG.price[p].flat + '" step="0.01" style="width:100%"></td>' +
+        '<td><input type="number" class="cfg-input" data-price="' + p + '" data-field="peak" value="' + CFG.price[p].peak + '" step="0.01" style="width:100%"></td>' +
+        '<td style="font-size:11px;color:var(--muted)">' + (p === 'self' ? '无服务费' : '含服务费') + '</td></tr>';
+    }
+    $('priceBody').innerHTML = html;
+    $('cfgDiesel').value = CFG.fin.diesel;
+  }
+
+  function renderFin() {
+    $('cfgRate').value = CFG.fin.rate;
+    $('cfgMargin').value = CFG.fin.margin;
+    $('cfgDown').value = CFG.fin.down;
+    $('cfgTax').value = CFG.fin.tax;
+  }
+
+  function resetConfig() {
+    CFG = { grades: JSON.parse(JSON.stringify(GRADES_DEFAULT)), price: JSON.parse(JSON.stringify(PRICE_DEFAULT)), fin: JSON.parse(JSON.stringify(FIN_DEFAULT)) };
+    saveCfg(CFG);
+    renderConfig();
+    syncDecisionFromConfig();
+    computeAll();
+  }
+
+  function renderConfig() { renderMatrix(); renderGrades(); renderPrices(); renderFin(); }
+
+  // ============ Tab 切换 ============
+  window.switchTab = function (tab) {
+    var isCfg = tab === 'cfg';
+    $('tabCfg').classList.toggle('hidden', !isCfg);
+    $('tabMain').classList.toggle('hidden', isCfg);
+    $('tabCfgBtn').classList.toggle('active', isCfg);
+    $('tabMainBtn').classList.toggle('active', !isCfg);
+    if (!isCfg) { syncDecisionFromConfig(); computeAll(); }
+    window.scrollTo(0, 0);
+  };
+
+  // ============ 决策页：从配置同步 ============
+  function syncDecisionFromConfig() {
+    $('rate').value = CFG.fin.rate;
+    $('marginRate').value = CFG.fin.margin;
+    $('down').value = CFG.fin.down;
+    $('dieselPrice').value = CFG.fin.diesel;
+    // 同步电价到充电结构详情
+    $('selfValleyPrice').value = CFG.price.self.valley;
+    $('selfFlatPrice').value = CFG.price.self.flat;
+    $('selfPeakPrice').value = CFG.price.self.peak;
+    $('publicValleyPrice').value = CFG.price.public.valley;
+    $('publicFlatPrice').value = CFG.price.public.flat;
+    $('publicPeakPrice').value = CFG.price.public.peak;
+    $('highwayValleyPrice').value = CFG.price.highway.valley;
+    $('highwayFlatPrice').value = CFG.price.highway.flat;
+    $('highwayPeakPrice').value = CFG.price.highway.peak;
+  }
+
+  // ============ 决策页：品牌/车型联动 ============
+  function renderBrandSelect() {
+    var html = '';
+    BRANDS.forEach(function (b, i) { html += '<option value="' + i + '">' + b.name + '（' + b.grade + '档）</option>'; });
+    $('brandSel').innerHTML = html;
+    renderModelSelect();
+  }
+  function renderModelSelect() {
+    var bi = parseInt($('brandSel').value, 10);
+    var b = BRANDS[bi];
+    var html = '';
+    b.models.forEach(function (m, i) { html += '<option value="' + i + '">' + m.name + ' · ' + m.kwh + '度 · ' + m.price + '万</option>'; });
+    $('modelSel').innerHTML = html;
+    applyModel();
+  }
+  function applyModel() {
+    var bi = parseInt($('brandSel').value, 10);
+    var mi = parseInt($('modelSel').value, 10);
+    var m = BRANDS[bi].models[mi];
+    $('evPrice').value = m.price;
+    $('evKwh').value = defaultKwh(m.kwh);
+    $('selfDiff').value = selfDiffByKwh(m.kwh);
+    $('modelHint').textContent = m.code + ' · ' + m.battery + (m.checked ? '' : ' · 价格为估算');
+  }
+  function defaultKwh(kwh) {
+    if (kwh < 300) return 105;
+    if (kwh <= 450) return 120;
+    return 135;
+  }
+
+  // ============ 充电模板 / 加权电价 ============
+  function applyChargeTemplate() {
+    var mode = $('chargeMode').value;
+    if (mode === 'custom') return;
+    var t = CHARGE_TEMPLATES[mode];
+    $('selfRatio').value = t.channel.self;
+    $('publicRatio').value = t.channel.public;
+    $('highwayRatio').value = t.channel.highway;
+    $('selfValley').value = t.self.valley; $('selfFlat').value = t.self.flat; $('selfPeak').value = t.self.peak;
+    $('publicValley').value = t.public.valley; $('publicFlat').value = t.public.flat; $('publicPeak').value = t.public.peak;
+    $('highwayValley').value = t.highway.valley; $('highwayFlat').value = t.highway.flat; $('highwayPeak').value = t.highway.peak;
+  }
+  function channelAvg(v, f, p, price) {
+    var s = num(v, 0) + num(f, 0) + num(p, 0);
+    if (s <= 0) return 0;
+    return (num(v, 0) * num(price.valley, 0) + num(f, 0) * num(price.flat, 0) + num(p, 0) * num(price.peak, 0)) / s;
+  }
+  function calcWeightedPrice() {
+    var sr = num($('selfRatio').value, 0), pr = num($('publicRatio').value, 0), hr = num($('highwayRatio').value, 0);
+    var total = sr + pr + hr;
+    if (total <= 0) return 0;
+    var selfAvg = channelAvg($('selfValley').value, $('selfFlat').value, $('selfPeak').value, { valley: $('selfValleyPrice').value, flat: $('selfFlatPrice').value, peak: $('selfPeakPrice').value });
+    var pubAvg = channelAvg($('publicValley').value, $('publicFlat').value, $('publicPeak').value, { valley: $('publicValleyPrice').value, flat: $('publicFlatPrice').value, peak: $('publicPeakPrice').value });
+    var hwAvg = channelAvg($('highwayValley').value, $('highwayFlat').value, $('highwayPeak').value, { valley: $('highwayValleyPrice').value, flat: $('highwayFlatPrice').value, peak: $('highwayPeakPrice').value });
+    return (sr * selfAvg + pr * pubAvg + hr * hwAvg) / total;
+  }
+
+  // ============ 充电结构 100% 校验 ============
+  function fmtSum(v) { return (Math.round(v * 10) / 10).toLocaleString('zh-CN'); }
+  function sumOf(ids) { var s = 0; ids.forEach(function (id) { s += num($(id).value, 0); }); return s; }
+  function markInvalid(ids, invalid) { ids.forEach(function (id) { if ($(id)) $(id).classList.toggle('invalid', invalid); }); }
+  function setSum(elId, sum, ok) {
+    var el = $(elId);
+    if (!el) return;
+    el.textContent = fmtSum(sum) + '%';
+    el.style.color = ok ? 'var(--green-dark)' : 'var(--red)';
+  }
+  function checkPeriod(sumId, ids, active) {
+    if (!active) {
+      var el0 = $(sumId);
+      if (el0) { el0.textContent = '—'; el0.style.color = '#9ca3af'; }
+      markInvalid(ids, false);
+      return true;
+    }
+    var sum = sumOf(ids);
+    var ok = Math.abs(sum - 100) < 0.5;
+    setSum(sumId, sum, ok);
+    markInvalid(ids, !ok);
+    return ok;
+  }
+  function updateChargeValidation() {
+    var sr = num($('selfRatio').value, 0);
+    var pr = num($('publicRatio').value, 0);
+    var hr = num($('highwayRatio').value, 0);
+
+    // 渠道占比合计 = 100%
+    var chSum = sr + pr + hr;
+    var chOk = Math.abs(chSum - 100) < 0.5;
+    setSum('channelSum', chSum, chOk);
+    markInvalid(['selfRatio', 'publicRatio', 'highwayRatio'], !chOk);
+
+    // 各渠道内时段占比合计 = 100%（渠道占比 > 0 才校验）
+    var selfOk = checkPeriod('selfSum', ['selfValley', 'selfFlat', 'selfPeak'], sr > 0);
+    var publicOk = checkPeriod('publicSum', ['publicValley', 'publicFlat', 'publicPeak'], pr > 0);
+    var highwayOk = checkPeriod('highwaySum', ['highwayValley', 'highwayFlat', 'highwayPeak'], hr > 0);
+
+    var msgs = [];
+    if (!chOk) msgs.push('渠道占比合计 ' + fmtSum(chSum) + '%（应为 100%）');
+    if (sr > 0 && !selfOk) msgs.push('自有桩时段合计 ' + fmtSum(sumOf(['selfValley', 'selfFlat', 'selfPeak'])) + '%');
+    if (pr > 0 && !publicOk) msgs.push('公共桩时段合计 ' + fmtSum(sumOf(['publicValley', 'publicFlat', 'publicPeak'])) + '%');
+    if (hr > 0 && !highwayOk) msgs.push('高速服务区时段合计 ' + fmtSum(sumOf(['highwayValley', 'highwayFlat', 'highwayPeak'])) + '%');
+    var warn = $('chargeWarn');
+    if (msgs.length) {
+      warn.textContent = '⚠ 占比校验未通过：' + msgs.join('；') + '。加权电价已按填写比例折算，请修正后重算。';
+      warn.classList.remove('hidden');
+    } else {
+      warn.classList.add('hidden');
+    }
+  }
+
+  // ============ 收入 ============
+  function calcRevenue() {
+    var km = num($('km').value, 8000);
+    var empty = num($('emptyRate').value, 12) / 100;
+    var ppk = num($('pricePerKm').value, 7);
+    var rev = ppk * km * (1 - empty);
+    $('revenue').value = Math.round(rev);
+    return rev;
+  }
+
+  // ============ 核心计算 ============
+  function PMT(rate, months, principal) {
+    principal = Math.abs(principal);
+    if (months <= 0) return 0;
+    if (rate <= 0) return principal / months;
+    var f = Math.pow(1 + rate, months);
+    return principal * rate * f / (f - 1);
+  }
+  function balance(P, r, n, t) {
+    if (t <= 0) return P;
+    if (t >= n) return 0;
+    var q = 1 + r;
+    return P * (Math.pow(q, n) - Math.pow(q, t)) / (Math.pow(q, n) - 1);
+  }
+  function irrMonthly(cf) {
+    var lo = 0, hi = 2.0;
+    function npv(r) { var s = 0; for (var i = 0; i < cf.length; i++) s += cf[i] / Math.pow(1 + r, i); return s; }
+    var flo = npv(lo), fhi = npv(hi);
+    if (flo * fhi > 0) return null;
+    for (var k = 0; k < 200; k++) { var mid = (lo + hi) / 2; var f = npv(mid); if (f > 0) lo = mid; else hi = mid; }
+    return (lo + hi) / 2;
+  }
+
+  // 亏吨自重差：按电池容量线性插值（锚点：282kWh≈1.6吨 / 423kWh≈2.5吨 / 601kWh≈4吨）
+  function selfDiffByKwh(kwh) {
+    var d;
+    if (kwh <= 282) d = 1.6;
+    else if (kwh <= 423) d = 1.6 + 0.9 * (kwh - 282) / 141;
+    else if (kwh <= 601) d = 2.5 + 1.5 * (kwh - 423) / 178;
+    else d = 4.0;
+    return Math.round(d * 10) / 10;
+  }
+
+  // ============ 主计算（统一入口） ============
+  function computeAll() {
+    updateChargeValidation();
+    var bi = parseInt($('brandSel').value, 10);
+    var mi = parseInt($('modelSel').value, 10);
+    var model = BRANDS[bi].models[mi];
+    var grade = BRANDS[bi].grade;
+    var evPrice = num($('evPrice').value, model.price);
+    var fuelPrice = num($('fuelPrice').value, 38);
+    var evKwh = num($('evKwh').value, 120);
+    var dieselL = num($('dieselL').value, 35);
+    var down = num($('down').value, 10) / 100;
+    var marginRate = num($('marginRate').value, 5) / 100;
+    var rate = num($('rate').value, 8) / 100;
+    var months = parseInt($('months').value, 10);
+    var taxRate = CFG.fin.tax / 100;
+    var km = num($('km').value, 8000);
+    var emptyRate = num($('emptyRate').value, 12) / 100;
+    var pricePerKm = num($('pricePerKm').value, 7);
+    var dieselPrice = num($('dieselPrice').value, CFG.fin.diesel);
+    var sfMethod = $('sfMethod').value;
+    var cargo = $('cargo').value;
+    var driver = num($('driver').value, 0);
+    var toll = num($('toll').value, 0);
+    var insurance = num($('insurance').value, 4.0);
+    var selfDiff = num($('selfDiff').value, 2.5);
+    var tonKmRate = num($('tonKmRate').value, 0.4);
+    var loadRate = num($('loadRate').value, 61) / 100;
+    var avgPrice = calcWeightedPrice();
+    $('avgPrice').value = avgPrice.toFixed(3);
+
+    var regRate = CFG.fin.regRate / 100;
+    var bookRate3 = CFG.grades[grade].bookRate3 / 100;
+    var flow = CFG.grades[grade].flow;
+    var endRate = bookRate3 * flow;
+
+    var revenue = pricePerKm * km * (1 - emptyRate);
+    $('revenue').value = Math.round(revenue);
+
+    var tax = evPrice * taxRate;
+    var total = evPrice + tax;
+    var downAmt = total * down;
+    var principal = total * (1 - down);                 // 万元（画图用）
+    var margin = principal * marginRate;                // 万元
+    var r = rate / 12;
+    var monthly = PMT(r, months, principal * 10000);    // 月供（元）
+    var totalInterest = monthly * months - principal * 10000;  // 元
+
+    var principalYuan = principal * 10000, marginYuan = margin * 10000;
+    var cf = [-(principalYuan - marginYuan)];
+    for (var i = 1; i < months; i++) cf.push(monthly);
+    cf.push(monthly - marginYuan);
+    var irrM = irrMonthly(cf);
+    var irrA = irrM == null ? null : (Math.pow(1 + irrM, 12) - 1) * 100;
+
+    var energyMonthly = evKwh / 100 * km * avgPrice;
+    var insMonthly = insurance * 10000 / 12;
+    var maintMonthly = 0.08 * km;
+    var sfMonthly = 0;
+    if (cargo === 'heavy' && sfMethod === 'tonkm') sfMonthly = selfDiff * tonKmRate * km * loadRate;
+    var opMonthly = energyMonthly + insMonthly + maintMonthly + driver + toll;
+    var opNet = revenue - opMonthly;
+    var finMonthly = monthly;
+    var dscr = finMonthly > 0 ? opNet / finMonthly : 0;
+
+    var totalKm3 = km * 36;
+    var residualVal = evPrice * endRate;
+    var depreciation = evPrice - residualVal;
+    var energyTotal = evKwh / 100 * totalKm3 * avgPrice / 10000;
+    var insTotal = insurance * 3;
+    var maintTotal = 0.08 * totalKm3 / 10000;
+    var sfTotal = sfMonthly * 36 / 10000;
+    var evTCO = depreciation + energyTotal + insTotal + maintTotal + sfTotal;
+
+    var fuelDep = fuelPrice - fuelPrice * 0.30;
+    var fuelDiesel = dieselL / 100 * totalKm3 * dieselPrice / 10000;
+    var fuelIns = 3.0 * 3;
+    var fuelMaint = 0.18 * totalKm3 / 10000;
+    var fuelTCO = fuelDep + fuelDiesel + fuelIns + fuelMaint;
+
+    var tcoDiff = evTCO - fuelTCO;
+    var savePct = fuelTCO > 0 ? (fuelTCO - evTCO) / fuelTCO : 0;
+
+    var resStart = evPrice * regRate;
+    var resEnd = evPrice * endRate;
+    function residual(t) { return resStart - (resStart - resEnd) * t / 36; }
+    var crossMonth = null;
+    if (principal <= resStart) crossMonth = 0;
+    else {
+      for (var t = 1; t <= months; t++) {
+        if (balance(principal, r, months, t) <= residual(t)) { crossMonth = t; break; }
+      }
+    }
+
+    var D = {
+      model: model, grade: grade, evPrice: evPrice, fuelPrice: fuelPrice, evKwh: evKwh, dieselL: dieselL,
+      down: down, marginRate: marginRate, rate: rate, months: months, taxRate: taxRate,
+      km: km, emptyRate: emptyRate, pricePerKm: pricePerKm, dieselPrice: dieselPrice,
+      sfMethod: sfMethod, cargo: cargo, driver: driver, toll: toll, insurance: insurance,
+      selfDiff: selfDiff, tonKmRate: tonKmRate, loadRate: loadRate,
+      avgPrice: avgPrice, regRate: regRate, endRate: endRate, flow: flow, bookRate3: bookRate3,
+      revenue: revenue, tax: tax, total: total, downAmt: downAmt, principal: principal, margin: margin,
+      monthly: monthly, totalInterest: totalInterest, irrA: irrA,
+      energyMonthly: energyMonthly, insMonthly: insMonthly, maintMonthly: maintMonthly, sfMonthly: sfMonthly,
+      opMonthly: opMonthly, opNet: opNet, finMonthly: finMonthly, dscr: dscr,
+      residualVal: residualVal, depreciation: depreciation, energyTotal: energyTotal, insTotal: insTotal,
+      maintTotal: maintTotal, sfTotal: sfTotal, evTCO: evTCO, fuelDep: fuelDep, fuelDiesel: fuelDiesel,
+      fuelIns: fuelIns, fuelMaint: fuelMaint, fuelTCO: fuelTCO, tcoDiff: tcoDiff, savePct: savePct,
+      resStart: resStart, resEnd: resEnd, residual: residual, crossMonth: crossMonth,
+      r: r
+    };
+    renderAll(D);
+  }
+
+  function renderAll(D) {
+    // 结果 hero
+    var dscrBadge = D.dscr >= 1.3 ? 'text-shadow:none' : '';
+    $('mDscr').textContent = D.dscr.toFixed(2);
+    $('mDscrSub').textContent = fmtMoney(D.opNet) + ' ÷ ' + fmtMoney(D.finMonthly);
+
+    $('mSave').textContent = (D.tcoDiff <= 0 ? '省 ' : '多花 ') + fmtMoney(Math.abs(D.tcoDiff)) + ' 万';
+    $('mSave').style.color = D.tcoDiff <= 0 ? '#fff' : '#ffe08a';
+    $('mSaveSub').textContent = '电动 ' + fmtMoney(D.evTCO) + ' vs 燃油 ' + fmtMoney(D.fuelTCO);
+
+    $('mSavePct').textContent = (D.savePct * 100).toFixed(1) + '%';
+    $('mSavePct').style.color = D.savePct >= 0.2 ? '#fff' : '#ffe08a';
+    $('mSaveSub').textContent = D.savePct >= 0.2 ? '已达标（≥20%）' : '未达标（<20%）';
+
+    if (D.crossMonth === 0) { $('mCross').textContent = '无敞口'; $('mCrossSub').textContent = '期初本金≤残值'; }
+    else if (D.crossMonth === null) { $('mCross').textContent = '全程敞口'; $('mCrossSub').textContent = '期限内未交叉'; }
+    else { $('mCross').textContent = '第 ' + D.crossMonth + ' 月'; $('mCrossSub').textContent = '敞口 ' + (D.crossMonth / D.months * 100).toFixed(0) + '%'; }
+
+    // 融资结果小结
+    $('finDown').textContent = fmtMoney(D.downAmt) + ' 万';
+    $('finPrincipal').textContent = fmtMoney(D.principal) + ' 万';
+    $('finMargin').textContent = fmtMoney(D.margin) + ' 万';
+    $('finMonthly').textContent = fmtMoney(D.monthly) + ' 元/月';
+    $('finInterest').textContent = fmtMoney(D.totalInterest) + ' 元';
+    $('finIrr').textContent = D.irrA == null ? '—' : D.irrA.toFixed(2) + '%';
+    $('finIrr').style.color = D.irrA == null ? 'var(--text)' : (D.irrA >= 15 ? '#dc2626' : (D.irrA >= 10 ? '#d97706' : '#16a34a'));
+
+    // 表A
+    renderTableA(D);
+    // 表B
+    renderTableB(D);
+    // 交叉图
+    drawChart(D);
+    // 判定
+    renderVerdict(D);
+  }
+
+  function renderTableA(D) {
+    var dscrCls = D.dscr >= 1.3 ? 'badge-green' : (D.dscr >= 1.1 ? 'badge-yellow' : (D.dscr >= 1.0 ? 'badge-orange' : 'badge-red'));
+    var netCF = D.opNet - D.finMonthly;
+    var html = '<table>' +
+      '<tr><th>项</th><th class="n">金额(元/月)</th><th>计算</th></tr>' +
+      '<tr><td>① 月收入</td><td class="n">' + fmtMoney(D.revenue) + '</td><td>' + D.pricePerKm + '×' + D.km + '×(1−' + (D.emptyRate * 100).toFixed(0) + '%)</td></tr>' +
+      '<tr><td>② 能源费</td><td class="n">' + fmtMoney(D.energyMonthly) + '</td><td>' + D.evKwh + '×' + (D.km / 100).toFixed(0) + '×' + D.avgPrice.toFixed(2) + '</td></tr>' +
+      '<tr><td>③ 保险月摊</td><td class="n">' + fmtMoney(D.insMonthly) + '</td><td>' + D.insurance + '万÷12</td></tr>' +
+      '<tr><td>④ 维保</td><td class="n">' + fmtMoney(D.maintMonthly) + '</td><td>0.08×' + D.km + '</td></tr>' +
+      '<tr><td>⑤ 司机+路桥</td><td class="n">' + fmtMoney(D.driver + D.toll) + '</td><td>自开=0</td></tr>' +
+      '<tr class="sub"><td>经营净收入</td><td class="n">' + fmtMoney(D.opNet) + '</td><td>①−(②+③+④+⑤)</td></tr>' +
+      '<tr><td>⑥ 月供(' + D.months + '期)</td><td class="n">' + fmtMoney(D.monthly) + '</td><td>本金' + fmtMoney(D.principal) + '万·' + (D.rate * 100).toFixed(1) + '%</td></tr>' +
+      '<tr class="sub"><td>月净现金流</td><td class="n" style="color:' + (netCF >= 0 ? '#16a34a' : '#dc2626') + '">' + fmtMoney(netCF) + '</td><td>经营净收入−月供</td></tr>' +
+      '<tr class="total"><td>DSCR</td><td class="n"><span class="badge ' + dscrCls + '">' + D.dscr.toFixed(2) + '</span></td><td>经营净收入÷月供</td></tr>' +
+      '</table>' +
+      '<div class="note">DSCR 按实际贷款期限(' + D.months + '期)的月供算——期限越短月供越大、DSCR 越低，永远看最大风险。IRR（实际年化，含保证金占用）：' + (D.irrA == null ? '—' : D.irrA.toFixed(2) + '%') + '。</div>';
+    $('tableA').innerHTML = html;
+  }
+
+  function renderTableB(D) {
+    var saveTxt = D.tcoDiff <= 0 ? ('省 ' + fmtMoney(Math.abs(D.tcoDiff)) + ' 万') : ('多花 ' + fmtMoney(D.tcoDiff) + ' 万');
+    var saveCls = D.tcoDiff <= 0 ? '#16a34a' : '#dc2626';
+    var pctCls = D.savePct >= 0.2 ? 'badge-green' : 'badge-orange';
+    var html = '<table>' +
+      '<tr><th>项（3年）</th><th class="n">电动(万)</th><th class="n">燃油(万)</th></tr>' +
+      '<tr><td>车价</td><td class="n">' + fmtMoney(D.evPrice) + '</td><td class="n">' + fmtMoney(D.fuelPrice) + '</td></tr>' +
+      '<tr><td>期末残值</td><td class="n">−' + fmtMoney(D.residualVal) + '</td><td class="n">−' + fmtMoney(D.fuelPrice * 0.30) + '</td></tr>' +
+      '<tr><td>车价−残值</td><td class="n">' + fmtMoney(D.depreciation) + '</td><td class="n">' + fmtMoney(D.fuelDep) + '</td></tr>' +
+      '<tr><td>能源费</td><td class="n">' + fmtMoney(D.energyTotal) + '</td><td class="n">' + fmtMoney(D.fuelDiesel) + '</td></tr>' +
+      '<tr><td>保险</td><td class="n">' + fmtMoney(D.insTotal) + '</td><td class="n">' + fmtMoney(D.fuelIns) + '</td></tr>' +
+      '<tr><td>维保</td><td class="n">' + fmtMoney(D.maintTotal) + '</td><td class="n">' + fmtMoney(D.fuelMaint) + '</td></tr>' +
+      '<tr><td>亏吨</td><td class="n">' + fmtMoney(D.sfTotal) + '</td><td class="n">—</td></tr>' +
+      '<tr class="sub"><td>3年 TCO</td><td class="n">' + fmtMoney(D.evTCO) + '</td><td class="n">' + fmtMoney(D.fuelTCO) + '</td></tr>' +
+      '<tr class="total"><td>TCO 差值 &amp; 省的幅度</td><td colspan="2" class="n"><span style="color:' + saveCls + ';font-weight:800;font-size:14px">' + saveTxt + '</span> <span class="badge ' + pctCls + '">省 ' + (D.savePct * 100).toFixed(1) + '%</span></td></tr>' +
+      '</table>' +
+      '<div class="info">TCO 固定 3 年（持有口径），与贷款期限解耦。省 20% 是扛住低温/电池衰减/维修垄断等不确定性的缓冲垫，达标线以 3 年期为准。</div>';
+    $('tableB').innerHTML = html;
+    $('cEndNote').textContent = (D.endRate * 100).toFixed(2) + '%';
+    $('cRegNote').textContent = (D.regRate * 100).toFixed(0) + '%';
+  }
+
+  function drawChart(D) {
+    var cv = $('chart');
+    var ctx = cv.getContext('2d');
+    var W = cv.width, H = cv.height;
+    ctx.clearRect(0, 0, W, H);
+    var padL = 56, padR = 24, padT = 20, padB = 44;
+    var pw = W - padL - padR, ph = H - padT - padB;
+    var n = D.months;
+    var maxY = Math.max(D.evPrice * 1.12, D.principal * 1.05, D.resStart * 1.08);
+    var niceMax = Math.ceil(maxY / 10) * 10;
+    function x(t) { return padL + (t / n) * pw; }
+    function y(v) { return padT + ph - (v / niceMax) * ph; }
+
+    ctx.font = '12px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.textBaseline = 'middle';
+    for (var g = 0; g <= niceMax; g += 10) {
+      var gy = y(g);
+      ctx.strokeStyle = '#eef1f4'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(padL, gy); ctx.lineTo(padL + pw, gy); ctx.stroke();
+      ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'right'; ctx.fillText(g + '', padL - 8, gy);
+    }
+    for (var m = 0; m <= n; m += Math.max(1, Math.round(n / 6))) {
+      var gx = x(m);
+      ctx.strokeStyle = '#eef1f4'; ctx.beginPath(); ctx.moveTo(gx, padT); ctx.lineTo(gx, padT + ph); ctx.stroke();
+      ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'center'; ctx.fillText(m + '', gx, padT + ph + 16);
+    }
+    ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(padL, padT); ctx.lineTo(padL, padT + ph); ctx.lineTo(padL + pw, padT + ph); ctx.stroke();
+
+    // 敞口填充
+    for (var t = 0; t < n; t++) {
+      var b0 = balance(D.principal, D.r, n, t), b1 = balance(D.principal, D.r, n, t + 1);
+      var r0 = D.residual(t), r1 = D.residual(t + 1);
+      if (b0 > r0 && b1 > r1) {
+        ctx.beginPath(); ctx.moveTo(x(t), y(b0)); ctx.lineTo(x(t + 1), y(b1)); ctx.lineTo(x(t + 1), y(r1)); ctx.lineTo(x(t), y(r0)); ctx.closePath();
+        ctx.fillStyle = 'rgba(220,38,38,0.09)'; ctx.fill();
+      }
+    }
+    // 残值线
+    ctx.strokeStyle = '#0d9488'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x(0), y(D.resStart));
+    for (var tt = 1; tt <= n; tt++) ctx.lineTo(x(tt), y(D.residual(tt)));
+    ctx.stroke();
+    // 本金线
+    ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x(0), y(D.principal));
+    for (var k = 1; k <= n; k++) ctx.lineTo(x(k), y(balance(D.principal, D.r, n, k)));
+    ctx.stroke();
+    // 交叉点标记
+    if (D.crossMonth !== null && D.crossMonth > 0 && D.crossMonth < n) {
+      var cx = x(D.crossMonth), cy = y(D.residual(D.crossMonth));
+      ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#0f172a'; ctx.font = '600 12px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+      ctx.textAlign = D.crossMonth > n * 0.55 ? 'right' : 'left';
+      var lx = D.crossMonth > n * 0.55 ? cx - 8 : cx + 8;
+      ctx.fillText('交叉点·第' + D.crossMonth + '月', lx, Math.max(padT + 8, cy - 10));
+    }
+    ctx.fillStyle = '#6b7280'; ctx.textAlign = 'left'; ctx.font = '11.5px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.fillText('金额（万元）', padL + 4, padT - 8);
+    ctx.textAlign = 'center'; ctx.fillText('期数（月）', padL + pw / 2, H - 8);
+  }
+
+  function renderVerdict(D) {
+    var dscrOk = D.dscr >= 1.3;
+    var saveOk = D.savePct >= 0.2;
+    var checks = [];
+    checks.push({ ok: dscrOk, label: 'DSCR = ' + D.dscr.toFixed(2) + (dscrOk ? ' ≥1.30' : ' <1.30') });
+    checks.push({ ok: saveOk, label: '省的幅度 ' + (D.savePct * 100).toFixed(1) + '%' + (saveOk ? ' ≥20%' : ' <20%') });
+
+    var cls, text;
+    if (dscrOk && saveOk) {
+      cls = 'verdict-pass';
+      text = '✅ 通过 — DSCR=' + D.dscr.toFixed(2) + '≥1.30、省的幅度 ' + (D.savePct * 100).toFixed(1) + '%≥20%，按选定方案执行。';
+    } else if (dscrOk && !saveOk) {
+      cls = 'verdict-cond';
+      text = '⚠ 有条件通过 — DSCR 达标，但省的幅度仅 ' + (D.savePct * 100).toFixed(1) + '%<20%，缓冲垫不足，扛不住电价波动/电池衰减，建议核残值、提首付或改方案。';
+    } else if (!dscrOk && saveOk) {
+      cls = 'verdict-cond';
+      text = '⚠ 有条件通过 — 省的幅度达标，但 DSCR=' + D.dscr.toFixed(2) + '<1.30，月供压力偏大，建议缩短期限或提首付/保证金。';
+    } else {
+      cls = 'verdict-fail';
+      text = '❌ 劝退 — DSCR=' + D.dscr.toFixed(2) + '<1.30 且省的幅度不足 20%，双重不达标，不建议放款。';
+    }
+    var html = '<div class="verdict ' + cls + '">' + text + '</div>';
+    html += '<div style="font-size:12px;color:var(--muted);margin-top:8px">' + checks.map(function (c) { return '<span style="margin-right:14px">' + (c.ok ? '✅' : '❌') + ' ' + c.label + '</span>'; }).join('') + '</div>';
+    html += '<div class="note" style="margin-top:6px">车型 ' + D.model.name + '（' + D.grade + '档 · 3年实际处置价率 ' + (D.endRate * 100).toFixed(2) + '%）· 首付 ' + (D.down * 100).toFixed(0) + '% · ' + D.months + '期 · 加权电价 ' + D.avgPrice.toFixed(2) + '元/度 · IRR ' + (D.irrA == null ? '—' : D.irrA.toFixed(2) + '%') + '</div>';
+    $('verdict').innerHTML = html;
+  }
+
+  // ============ 事件绑定 ============
+  window.toggleCollapse = function () {
+    var el = $('chargeDetail');
+    var arrow = $('collapseArrow');
+    var isOpen = !el.classList.contains('hidden');
+    el.classList.toggle('hidden', isOpen);
+    arrow.classList.toggle('open', !isOpen);
+  };
+
+  // 配置页输入 → 存 localStorage → 同步决策页
+  document.addEventListener('input', function (e) {
+    var t = e.target;
+    if (t.classList.contains('cfg-input')) {
+      var g = t.getAttribute('data-grade'), p = t.getAttribute('data-price');
+      if (g) { CFG.grades[g][t.getAttribute('data-field')] = num(t.value, 0); }
+      else if (p) { CFG.price[p][t.getAttribute('data-field')] = num(t.value, 0); }
+      else if (t.id === 'cfgRegRate') CFG.fin.regRate = num(t.value, 70);
+      else if (t.id === 'cfgDiesel') CFG.fin.diesel = num(t.value, 7.5);
+      else if (t.id === 'cfgRate') CFG.fin.rate = num(t.value, 8);
+      else if (t.id === 'cfgMargin') CFG.fin.margin = num(t.value, 5);
+      else if (t.id === 'cfgDown') CFG.fin.down = num(t.value, 10);
+      else if (t.id === 'cfgTax') CFG.fin.tax = num(t.value, 4.4);
+      saveCfg(CFG);
+      // 刷新实际处置价率显示
+      renderGrades();
+      if (!t.id || ['cfgRegRate','cfgDiesel','cfgRate','cfgMargin','cfgDown','cfgTax'].indexOf(t.id) < 0) {
+        syncDecisionFromConfig();
+      }
+    }
+  });
+
+  $('brandSel').addEventListener('change', renderModelSelect);
+  $('modelSel').addEventListener('change', function () { applyModel(); computeAll(); });
+  $('chargeMode').addEventListener('change', function () { applyChargeTemplate(); computeAll(); });
+  var SCENE_TO_CHARGE = { steel: 'closed', mine: 'closed', city: 'city', trunk: 'trunk' };
+  $('scene').addEventListener('change', function () {
+    var s = SCENES[this.value];
+    $('km').value = s.km; $('emptyRate').value = s.empty; $('pricePerKm').value = s.pricePerKm;
+    // 联动：运输场景 → 配套充电模式
+    var cm = SCENE_TO_CHARGE[this.value];
+    if (cm) { $('chargeMode').value = cm; applyChargeTemplate(); }
+    computeAll();
+  });
+
+  // 决策页所有输入 → 实时重算
+  ['evPrice','fuelPrice','evKwh','dieselL','down','marginRate','rate','months','km','emptyRate','pricePerKm','dieselPrice','sfMethod','cargo','selfDiff','tonKmRate','loadRate','driver','toll','insurance',
+   'selfRatio','publicRatio','highwayRatio','selfValley','selfFlat','selfPeak','publicValley','publicFlat','publicPeak','highwayValley','highwayFlat','highwayPeak',
+   'selfValleyPrice','selfFlatPrice','selfPeakPrice','publicValleyPrice','publicFlatPrice','publicPeakPrice','highwayValleyPrice','highwayFlatPrice','highwayPeakPrice'].forEach(function (id) {
+    var el = $(id);
+    if (!el) return;
+    el.addEventListener('input', computeAll);
+    el.addEventListener('change', computeAll);
+  });
+
+  // ============ 初始化 ============
+  renderConfig();
+  renderBrandSelect();
+  syncDecisionFromConfig();
+  applyChargeTemplate();
+  computeAll();
+})();
+</script>
+</body>
+</html>
