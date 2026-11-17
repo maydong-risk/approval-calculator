@@ -63,6 +63,7 @@
   }
   .field input[type="number"]:focus, .field select:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(22,163,74,0.12); }
   .field input[readonly] { background: #f0fdf4; font-weight: 700; color: var(--green-dark); }
+  .field input[type="number"]:disabled, .field select:disabled { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
   .field input.invalid, .cfg-input.invalid { border-color: var(--red) !important; box-shadow: 0 0 0 3px rgba(220,38,38,0.14) !important; }
   .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
@@ -270,12 +271,29 @@
             </select>
           </div>
           <div class="field-row">
+            <div class="field"><label>计费方式<span class="hint">按趟→公里运价；按吨公里→吨公里运价</span></label>
+              <select id="sfMethod"><option value="trip">按趟计费</option><option value="tonkm">按吨公里</option></select>
+            </div>
+            <div class="field"><label>货物类型<span class="hint">重货才可能亏吨</span></label>
+              <select id="cargo"><option value="heavy">重货（煤炭/砂石/钢材）</option><option value="light">轻抛（快递/快运）</option></select>
+            </div>
+          </div>
+          <div class="field-row">
             <div class="field"><label>月里程（km）</label><input type="number" id="km" value="8000" step="100"></div>
             <div class="field"><label>空驶率 %</label><input type="number" id="emptyRate" value="12" step="1"></div>
           </div>
-          <div class="field"><label>公里运价（元/km）</label><input type="number" id="pricePerKm" value="7" step="0.5"></div>
+          <div class="field"><label>公里运价（元/km）<span class="hint">按趟/轻抛时用</span></label><input type="number" id="pricePerKm" value="7" step="0.5"></div>
+          <div id="tonKmGroup" style="font-size:12px;font-weight:700;margin:8px 0 8px;color:var(--text)">吨公里计费参数（仅「重货 + 按吨公里」时用于收入与亏吨）</div>
+          <div class="field-row">
+            <div class="field"><label>合规装载吨位（吨）<span class="hint">燃油基准·可调</span></label><input type="number" id="payload" value="33" step="0.5"></div>
+            <div class="field"><label>自重差（吨）<span class="hint">随电量带出</span></label><input type="number" id="selfDiff" value="2.5" step="0.1"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>吨公里运价（元/吨·公里）</label><input type="number" id="tonKmRate" value="0.4" step="0.05"></div>
+            <div class="field"><label>实载率 %<span class="hint">满载率</span></label><input type="number" id="loadRate" value="61" step="1"></div>
+          </div>
           <div class="field"><label>月收入（元）<span class="hint">自动算</span></label><input type="number" id="revenue" readonly></div>
-          <div class="note">月收入 = 公里运价 × 月里程 × (1−空驶率)。收入必须扣空驶，不能拿名义运价直接乘总里程。</div>
+          <div class="note">月收入按计费方式分两路：<b>按趟/轻抛</b>＝公里运价×月里程×(1−空驶率)；<b>按吨公里（重货）</b>＝吨公里运价×合规装载×实载率×里程×(1−空驶率)，其中电动车合规装载＝合规装载吨位−自重差（亏吨自动扣在收入里）。</div>
         </div>
 
         <div class="card">
@@ -325,21 +343,7 @@
         </div>
 
         <div class="card">
-          <h2><span class="step">5</span>线路 &amp; 成本</h2>
-          <div class="field-row">
-            <div class="field"><label>计费方式<span class="hint">按吨公里才可能亏吨</span></label>
-              <select id="sfMethod"><option value="trip">按趟计费</option><option value="tonkm">按吨公里</option></select>
-            </div>
-            <div class="field"><label>货物类型<span class="hint">重货才可能亏吨</span></label>
-              <select id="cargo"><option value="heavy">重货（煤炭/砂石/钢材）</option><option value="light">轻抛（快递/快运）</option></select>
-            </div>
-          </div>
-          <div style="font-size:12px;font-weight:700;margin:8px 0 8px;color:var(--text)">亏吨参数（仅「重货 + 按吨公里」时计入）</div>
-          <div class="field-row" style="grid-template-columns:1fr 1fr 1fr">
-            <div class="field"><label>自重差（吨）<span class="hint">随电量带出</span></label><input type="number" id="selfDiff" value="2.5" step="0.1"></div>
-            <div class="field"><label>吨公里运价（元/吨·公里）</label><input type="number" id="tonKmRate" value="0.4" step="0.05"></div>
-            <div class="field"><label>实载率 %</label><input type="number" id="loadRate" value="61" step="1"></div>
-          </div>
+          <h2><span class="step">5</span>运营成本</h2>
           <div class="field-row">
             <div class="field"><label>司机工资（元/月）</label><input type="number" id="driver" value="0" step="1000"></div>
             <div class="field"><label>月路桥费（元）</label><input type="number" id="toll" value="0" step="500"></div>
@@ -727,9 +731,40 @@
     return Math.round(d * 10) / 10;
   }
 
+  // ============ 计费方式/运价字段联动 ============
+  // 规则：① 轻抛货按体积/方计费，不用吨公里 → 禁用「按吨公里」选项；
+  //       ② 按吨公里时，公里运价变灰禁用、吨公里参数启用；按趟时反之。
+  function updateBillingUI() {
+    var sfMethod = $('sfMethod').value;
+    var cargo = $('cargo').value;
+
+    // 轻抛货禁用「按吨公里」选项
+    var tonKmOpt = $('sfMethod').querySelector('option[value="tonkm"]');
+    if (tonKmOpt) tonKmOpt.disabled = (cargo === 'light');
+
+    // 非法组合「轻抛 + 按吨公里」自动切回按趟
+    if (cargo === 'light' && sfMethod === 'tonkm') {
+      $('sfMethod').value = 'trip';
+      sfMethod = 'trip';
+    }
+
+    var useTonKm = (cargo === 'heavy' && sfMethod === 'tonkm');
+
+    // 公里运价：按吨公里时禁用；吨公里参数：非吨公里时禁用
+    $('pricePerKm').disabled = useTonKm;
+    ['payload', 'selfDiff', 'tonKmRate', 'loadRate'].forEach(function (id) {
+      if ($(id)) $(id).disabled = !useTonKm;
+    });
+
+    // 吨公里参数小标题灰化
+    var tg = $('tonKmGroup');
+    if (tg) tg.style.color = useTonKm ? 'var(--text)' : '#c0c4cc';
+  }
+
   // ============ 主计算（统一入口） ============
   function computeAll() {
     updateChargeValidation();
+    updateBillingUI();
     var bi = parseInt($('brandSel').value, 10);
     var mi = parseInt($('modelSel').value, 10);
     var model = BRANDS[bi].models[mi];
@@ -755,6 +790,7 @@
     var selfDiff = num($('selfDiff').value, 2.5);
     var tonKmRate = num($('tonKmRate').value, 0.4);
     var loadRate = num($('loadRate').value, 61) / 100;
+    var payload = num($('payload').value, 33);
     var avgPrice = calcWeightedPrice();
     $('avgPrice').value = avgPrice.toFixed(3);
 
@@ -763,7 +799,12 @@
     var flow = CFG.grades[grade].flow;
     var endRate = bookRate3 * flow;
 
-    var revenue = pricePerKm * km * (1 - emptyRate);
+    var revenue;
+    if (cargo === 'heavy' && sfMethod === 'tonkm') {
+      revenue = tonKmRate * (payload - selfDiff) * loadRate * km * (1 - emptyRate);
+    } else {
+      revenue = pricePerKm * km * (1 - emptyRate);
+    }
     $('revenue').value = Math.round(revenue);
 
     var tax = evPrice * taxRate;
@@ -786,7 +827,7 @@
     var insMonthly = insurance * 10000 / 12;
     var maintMonthly = 0.08 * km;
     var sfMonthly = 0;
-    if (cargo === 'heavy' && sfMethod === 'tonkm') sfMonthly = selfDiff * tonKmRate * km * loadRate;
+    if (cargo === 'heavy' && sfMethod === 'tonkm') sfMonthly = selfDiff * tonKmRate * loadRate * km * (1 - emptyRate);
     var opMonthly = energyMonthly + insMonthly + maintMonthly + driver + toll;
     var opNet = revenue - opMonthly;
     var finMonthly = monthly;
@@ -826,7 +867,7 @@
       down: down, marginRate: marginRate, rate: rate, months: months, taxRate: taxRate,
       km: km, emptyRate: emptyRate, pricePerKm: pricePerKm, dieselPrice: dieselPrice,
       sfMethod: sfMethod, cargo: cargo, driver: driver, toll: toll, insurance: insurance,
-      selfDiff: selfDiff, tonKmRate: tonKmRate, loadRate: loadRate,
+      selfDiff: selfDiff, tonKmRate: tonKmRate, loadRate: loadRate, payload: payload,
       avgPrice: avgPrice, regRate: regRate, endRate: endRate, flow: flow, bookRate3: bookRate3,
       revenue: revenue, tax: tax, total: total, downAmt: downAmt, principal: principal, margin: margin,
       monthly: monthly, totalInterest: totalInterest, irrA: irrA,
@@ -878,12 +919,19 @@
     renderVerdict(D);
   }
 
+  function revenueFormula(D) {
+    if (D.cargo === 'heavy' && D.sfMethod === 'tonkm') {
+      return D.tonKmRate + '×(' + D.payload + '−' + D.selfDiff + ')×' + (D.loadRate * 100).toFixed(0) + '%×' + D.km + '×(1−' + (D.emptyRate * 100).toFixed(0) + '%)';
+    }
+    return D.pricePerKm + '×' + D.km + '×(1−' + (D.emptyRate * 100).toFixed(0) + '%)';
+  }
+
   function renderTableA(D) {
     var dscrCls = D.dscr >= 1.3 ? 'badge-green' : (D.dscr >= 1.1 ? 'badge-yellow' : (D.dscr >= 1.0 ? 'badge-orange' : 'badge-red'));
     var netCF = D.opNet - D.finMonthly;
     var html = '<table>' +
       '<tr><th>项</th><th class="n">金额(元/月)</th><th>计算</th></tr>' +
-      '<tr><td>① 月收入</td><td class="n">' + fmtMoney(D.revenue) + '</td><td>' + D.pricePerKm + '×' + D.km + '×(1−' + (D.emptyRate * 100).toFixed(0) + '%)</td></tr>' +
+      '<tr><td>① 月收入</td><td class="n">' + fmtMoney(D.revenue) + '</td><td>' + revenueFormula(D) + '</td></tr>' +
       '<tr><td>② 能源费</td><td class="n">' + fmtMoney(D.energyMonthly) + '</td><td>' + D.evKwh + '×' + (D.km / 100).toFixed(0) + '×' + D.avgPrice.toFixed(2) + '</td></tr>' +
       '<tr><td>③ 保险月摊</td><td class="n">' + fmtMoney(D.insMonthly) + '</td><td>' + D.insurance + '万÷12</td></tr>' +
       '<tr><td>④ 维保</td><td class="n">' + fmtMoney(D.maintMonthly) + '</td><td>0.08×' + D.km + '</td></tr>' +
@@ -913,7 +961,7 @@
       '<tr class="sub"><td>3年 TCO</td><td class="n">' + fmtMoney(D.evTCO) + '</td><td class="n">' + fmtMoney(D.fuelTCO) + '</td></tr>' +
       '<tr class="total"><td>TCO 差值 &amp; 省的幅度</td><td colspan="2" class="n"><span style="color:' + saveCls + ';font-weight:800;font-size:14px">' + saveTxt + '</span> <span class="badge ' + pctCls + '">省 ' + (D.savePct * 100).toFixed(1) + '%</span></td></tr>' +
       '</table>' +
-      '<div class="info">TCO 固定 3 年（持有口径），与贷款期限解耦。省 20% 是扛住低温/电池衰减/维修垄断等不确定性的缓冲垫，达标线以 3 年期为准。</div>';
+      '<div class="info">TCO 固定 3 年（持有口径），与贷款期限解耦。省 20% 是扛住低温/电池衰减/维修垄断等不确定性的缓冲垫，达标线以 3 年期为准。' + (D.sfTotal > 0 ? ' 亏吨（电动比燃油少拉货）＝吨公里运价×自重差×实载率×里程×(1−空驶率)，仅「重货＋按吨公里」时计入。' : '') + '</div>';
     $('tableB').innerHTML = html;
     $('cEndNote').textContent = (D.endRate * 100).toFixed(2) + '%';
     $('cRegNote').textContent = (D.regRate * 100).toFixed(0) + '%';
@@ -1054,7 +1102,7 @@
   });
 
   // 决策页所有输入 → 实时重算
-  ['evPrice','fuelPrice','evKwh','dieselL','down','marginRate','rate','months','km','emptyRate','pricePerKm','dieselPrice','sfMethod','cargo','selfDiff','tonKmRate','loadRate','driver','toll','insurance',
+  ['evPrice','fuelPrice','evKwh','dieselL','down','marginRate','rate','months','km','emptyRate','pricePerKm','dieselPrice','sfMethod','cargo','selfDiff','payload','tonKmRate','loadRate','driver','toll','insurance',
    'selfRatio','publicRatio','highwayRatio','selfValley','selfFlat','selfPeak','publicValley','publicFlat','publicPeak','highwayValley','highwayFlat','highwayPeak',
    'selfValleyPrice','selfFlatPrice','selfPeakPrice','publicValleyPrice','publicFlatPrice','publicPeakPrice','highwayValleyPrice','highwayFlatPrice','highwayPeakPrice'].forEach(function (id) {
     var el = $(id);
